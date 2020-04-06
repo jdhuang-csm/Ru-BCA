@@ -1,0 +1,8 @@
+[0] Config.pm:354> INFO - This is Biber 2.7
+[0] Config.pm:357> INFO - Logfile is 'package_citations.blg'
+[29] biber-MSWIN64:303> INFO - === 
+[57] Biber.pm:359> INFO - Reading 'package_citations.bcf'
+[140] Utils.pm:180> ERROR - Error: Found biblatex control file version 3.7, expected version 3.3.
+This means that your biber (2.7) and biblatex (3.14) versions are incompatible.
+See compat matrix in biblatex or biber PDF documentation.
+[142] Biber.pm:113> INFO - ERRORS: 1

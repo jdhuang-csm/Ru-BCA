@@ -1,0 +1,65 @@
+
+@Article{Hunter:2007,
+  Author    = {Hunter, J. D.},
+  Title     = {Matplotlib: A 2D graphics environment},
+  Journal   = {Computing in Science \& Engineering},
+  Volume    = {9},
+  Number    = {3},
+  Pages     = {90--95},
+  abstract  = {Matplotlib is a 2D graphics package used for Python
+  for application development, interactive scripting, and
+  publication-quality image generation across user
+  interfaces and operating systems.},
+  publisher = {IEEE COMPUTER SOC},
+  year      = 2007
+}
+@ARTICLE{numpy:2011,
+       author = {{Van Der Walt}, Stefan and {Colbert}, S. Chris and {Varoquaux}, Ga{\"e}l},
+        title = "{The NumPy array: a structure for efficient numerical computation}",
+      journal = {{Computing in Science \& Engineering}},
+     Doi = {10.1109/MCSE.2011.37},
+         year = 2011,
+        month = Mar,
+	Volume = 13,
+	Issue = 2,
+	Pages = {22-30},
+          eid = {arXiv:1102.1523},
+archivePrefix = {arXiv},
+       Primaryclass = {cs.MS},
+       eprint = {1102.1523},
+       adsurl = {https://ui.adsabs.harvard.edu/#abs/2011arXiv1102.1523V},
+       Arxivurl = {http://arxiv.org/abs/1102.1523}
+}
+
+@InProceedings{pandas:2010,
+ author    = { Wes McKinney },
+ title     = { Data Structures for Statistical Computing in Python },
+ booktitle = { Proceedings of the 9th Python in Science Conference },
+ pages     = { 51 - 56 },
+ year      = { 2010 },
+ editor    = { St\'efan van der Walt and Jarrod Millman }}
+
+@Misc{scipy:2001,
+  author =    {Eric Jones and Travis Oliphant and Pearu Peterson and others},
+  title =     {{SciPy}: Open source scientific tools for {Python}},
+  year =      {2001--},
+  url = "http://www.scipy.org/",
+  note = {[Online; accessed <today>]}
+}
+
+@misc{seaborn:2018,
+  author = {{Waskom} M. and  {Botvinnik} O. and  {O'Kane} D. and  {Hobson} P. and  {Ostblom} J. and  {Lukauskas} S. and  {Gemperline} D.~C. and  {Augspurger} T. and  {Halchenko} Y. and  {Cole} J.~B. and  {Warmenhoven} J. and  {de Ruiter} J. and  {Pye} C. and  {Hoyer} S. and  {Vanderplas} J. and  {Villalba} S. and  {Kunter} G. and  {Quintero} E. and  {Bachant} P. and  {Martin} M. and  {Meyer} K. and  {Miles} A. and  {Ram} Y. and  {Brunner} T. and  {Yarkoni} T. and  {Williams} M. and  {Evans} C. and  {Fitzgerald} C. and  {Brian} B. and  {Qalieh} A.},
+  year = 2018,
+  title = "Seaborn v0.9.0",
+  doi = {10.5281/zenodo.1313201},
+  url = {https://doi.org/10.5281/zenodo.1313201}
+}
+
+@article{scikit-learn:2011, 
+ title={Scikit-learn: Machine learning in Python},
+ author={Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and Blondel, Mathieu and Prettenhofer, Peter and Weiss, Ron and Dubourg, Vincent and others},
+ journal={Journal of machine learning research},
+ volume={12},
+ number={Oct},
+ pages={2825--2830},
+ year={2011}}

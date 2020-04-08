@@ -4,7 +4,7 @@ This repository contains data, code, and analysis for a study of Ru/(BaO-CaO-Al<
 ## Methods
 * (BaO)<sub>x</sub>-(CaO)<sub>y</sub>-(Al<sub>2</sub>O<sub>3</sub>)<sub>1-x-y</sub> (BCA) catalyst supports were synthesized via sol-gel and solid-state methods. 
 * Ru/BCA catalysts were prepared via incipient wetness impregnation to achieve 1 wt. % Ru loading.
-* Ammonia production rates were measured for Ru/BCA catalysts in a packed-bed reactor at temperatures ranging up to 600<sup>o</sup>C and flow rates up to 20 SLM.
+* Ammonia production rates were measured for Ru/BCA catalysts in a packed-bed reactor at temperatures up to 600<sup>o</sup>C and flow rates up to 20 SLM.
 * A machine learning (ML) model was employed to improve understanding of the behavior of Ru/BCA catalysts.
 * A microkinetic model was developed to describe the best-performing catalyst.
 
@@ -15,7 +15,7 @@ This repository contains data, code, and analysis for a study of Ru/(BaO-CaO-Al<
 * The volcano relationship suggests that BCA supports with optimal (metal-oxygen)-(metal-nitrogen) bond energy deltas are able to boost synthesis rates by adsorbing nitrogen directly, removing the nitrogen adsorption bottleneck observed for typical ammonia synthesis catalysts (Fig. 2).
 * The microkinetic model for Ru/B2CA revealed that (1) nitrogen adsorption is not the rate-limiting step in ammonia synthesis over Ru/B2CA and (2) the Ru surface is rich with adsorbed nitrogen, lending support to the mechanistic hypothesis derived from the ML model.
 
-![AdsMech](/images/AdsMechDiagram.jpg)*Figure 2. Left: on conventional supports, nitrogen adsorption proceeds on limited active Ru sites. Dissociative nitrogen adsorption is rate-limiting. Right: we hypothesize that the B2CA support is able to adsorb nitrogen directly (either on its surface or on a B2CA adlayer on the Ru surface), providing a ready supply of adsorbed nitrogen to the Ru surface.
+![AdsMech](/images/AdsMechDiagram.jpg)*Figure 2. Left: on conventional supports, nitrogen adsorption proceeds on limited active Ru sites. Dissociative nitrogen adsorption is rate-limiting. Right: we hypothesize that the B2CA support is able to adsorb nitrogen directly (either on its surface or on a B2CA adlayer on the Ru surface), providing a ready supply of adsorbed nitrogen to the Ru surface.*
 
 ## Repository Resources
 The following resources are available in this repository:

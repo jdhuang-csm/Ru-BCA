@@ -1,5 +1,5 @@
 # Fast-ramping Ru/(BaO)-(CaO)-(Al<sub>2</sub>O<sub>3</sub>) catalysts for ammonia synthesis
-This repository contains data, code, and analysis for a study of Ru/(BaO-CaO-Al<sub>2</sub>O<sub>3</sub>) catalysts for ammonia synthesis. A journal article describing the full study in detail is in preparation.
+This repository contains data, code, and analysis for a study of Ru/(BaO)-(CaO)-(Al<sub>2</sub>O<sub>3</sub>) catalysts for ammonia synthesis. A journal article describing the full study in detail is in preparation.
 
 ## Methods
 * (BaO)<sub>x</sub>-(CaO)<sub>y</sub>-(Al<sub>2</sub>O<sub>3</sub>)<sub>1-x-y</sub> (BCA) catalyst supports were synthesized via sol-gel and solid-state methods. 

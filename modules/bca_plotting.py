@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import pymatgen as mg
 import pandas as pd
 import re
-# from file_load import BCA_formula_from_str
 from model_eval import predict_interval
 
 def BCA_formula_from_str(BCA_str):

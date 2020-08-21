@@ -4,18 +4,17 @@ This repository contains data, code, and analysis for a study of Ru/(BaO)-(CaO)-
 ## Methods
 * (BaO)<sub>x</sub>-(CaO)<sub>y</sub>-(Al<sub>2</sub>O<sub>3</sub>)<sub>1-x-y</sub> (BCA) catalyst supports were synthesized via sol-gel and solid-state methods. 
 * Ru/BCA catalysts were prepared via incipient wetness impregnation to achieve 1 wt. % Ru loading.
-* Ammonia production rates were measured for Ru/BCA catalysts in a packed-bed reactor at temperatures up to 600<sup>o</sup>C and flow rates up to 20 SLM.
+* Ammonia synthesis rates were measured for Ru/BCA catalysts in a packed-bed reactor at 480-600<sup>o</sup>C, 10 bar, and space velocities up to 1.3 x 10<sup>6</sup> ml g<sub>cat</sub><sup>-1</sup> h<sup>-1</sup>.
 * A machine learning (ML) model was employed to improve understanding of the behavior of Ru/BCA catalysts.
 * A microkinetic model was developed to describe the best-performing catalyst.
 
 ## Key Results
-![Megafig](/images/Fig1_Megafigure.jpg)*Figure 1. (a) Measured ammonia formation rates for Ru/BCA catalysts. Ru/B2CA is outlined in black. (b) ML model predictions of formation rates for the full BCA ternary space. (c) BCA phase diagram at 1250<sup>o</sup>C. Adapted from Zhang, R., Mao, H., & Taskinen, P. (2017). Journal of the American Ceramic Society, 100(6), 2722–2731. (d) Volcano-like relationship between ammonia formation rate and (metal-oxygen)-(metal-nitrogen) bond energy delta of the support. Inset: volcano relationship between ammonia synthesis turnover frequency and nitrogen adsorption energy for unsupported metal catalysts, adapted from Jacobsen, C. J. H. et al. (2001). Journal of the American Chemical Society, 123(34), 8404–8405.*
-* A novel catalyst, Ru/(BaO)<sub>2</sub>(CaO)(Al<sub>2</sub>O<sub>3</sub>) (Ru/B2CA), was identified, which exhibits exceptional ammonia formation rates up to 200 mmol/g*h (Fig. 1a).
-* ML analysis revealed a distinct volcano relationship between ammonia formation rate and a specialized descriptor, the mean (metal-oxygen)-(metal-nitrogen) bond energy delta, which serves as a proxy for nitrogen adsorption energy on the BCA support (Fig. 1d). This relationship is highly reminiscent of the volcano relationship between turnover frequency and nitrogen adsoprtion energy for unsupported metal catalysts (Fig. 1d, inset).
-* The volcano relationship suggests that BCA supports with optimal (metal-oxygen)-(metal-nitrogen) bond energy deltas are able to boost synthesis rates by adsorbing nitrogen directly, removing the nitrogen adsorption bottleneck observed for typical ammonia synthesis catalysts (Fig. 2).
+* A novel catalyst, Ru/(BaO)<sub>2</sub>(CaO)(Al<sub>2</sub>O<sub>3</sub>) (Ru/B2CA), was identified, which delivers ammonia synthesis rates as high as 189 mmol g<sub>cat</sub><sup>-1</sup> h<sup>-1</sup>
+* ML analysis revealed a distinct volcano relationship between ammonia formation rate and a specialized descriptor, the mean (metal-oxygen)-(metal-nitrogen) bond energy delta, which serves as a proxy for nitrogen adsorption energy on the BCA support. This relationship is highly reminiscent of the volcano relationship between turnover frequency and nitrogen adsoprtion energy for unsupported metal catalysts.
+* The volcano relationship suggests that BCA supports with optimal (metal-oxygen)-(metal-nitrogen) bond energy deltas are able to boost synthesis rates by adsorbing nitrogen directly, removing the nitrogen adsorption bottleneck observed for typical ammonia synthesis catalysts.
 * The microkinetic model for Ru/B2CA revealed that (1) nitrogen adsorption is not the rate-limiting step in ammonia synthesis over Ru/B2CA and (2) the Ru surface is rich with adsorbed nitrogen, lending support to the mechanistic hypothesis derived from the ML model.
 
-![AdsMech](/images/AdsMechDiagram.jpg)*Figure 2. Left: on conventional supports, nitrogen adsorption proceeds on limited active Ru sites. Dissociative nitrogen adsorption is rate-limiting. Right: we hypothesize that the B2CA support is able to adsorb nitrogen directly (either on its surface or on a B2CA adlayer on the Ru surface), providing a ready supply of adsorbed nitrogen to the Ru surface.*
+![AdsMech](/images/SynthesisCartoon_annote.pdf)*Proposed mechanism for ammonia formation on Ru/B2CA.*
 
 ## Repository Resources
 The following resources are available in this repository:

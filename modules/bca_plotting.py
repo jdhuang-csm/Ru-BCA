@@ -4,8 +4,28 @@ from ternary.helpers import simplex_iterator
 import matplotlib.pyplot as plt
 import pymatgen as mg
 import pandas as pd
-from file_load import BCA_formula_from_str
+import re
+# from file_load import BCA_formula_from_str
 from model_eval import predict_interval
+
+def BCA_formula_from_str(BCA_str):
+    """
+    Get chemical formula string from BCA string
+
+    Args:
+        BCA_str: BCA ratio string (e.g. 'B3C1A1')
+    """
+    if len(BCA_str)==6 and BCA_str[:3]=='BCA':
+        # format: BCAxyz. suitable for single-digit integer x,y,z
+        funits = BCA_str[-3:]
+    else:
+        # format: BxCyAz. suitable for multi-digit or non-integer x,y,z
+        funits = re.split('[BCA]',BCA_str)
+        funits = [u for u in funits if len(u) > 0]
+        funits
+    components = ['BaO','CaO','Al2O3']
+    formula = ''.join([f'({c}){n}' for c,n in zip(components, funits)])
+    return formula
 
 def get_coords_from_comp(comp,tern_axes=['Ca','Al','Ba']):
 	base_amt = {'Ba':1,'Ca':1,'Al':2}

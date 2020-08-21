@@ -20,7 +20,7 @@ hydrides = {'Ba':'BaH2','Ca':'CaH2','Al':'AlH3','B':'BH3','Mg':'MgH2','Sr':'SrH2
 work_function = {'Ba':2.52,'Ca':2.87,'Al':4.17,'B':4.45,'Mg':3.66,'Sr':2.59}
 
 """Load elemental electrical conductivity data"""
-elec_conductivity_df = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'ElementalElectricalConductivity.txt'),sep='\t',skipfooter=1,engine='python')
+elec_conductivity_df = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../data/ElementalElectricalConductivity.txt'),sep='\t',skipfooter=1,engine='python')
 elec_conductivity = dict(zip(elec_conductivity_df['Symbol'],elec_conductivity_df['Electrical Conductivity (S/cm)']))
 
 class MatProjCalc:

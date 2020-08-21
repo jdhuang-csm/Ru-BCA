@@ -66,7 +66,7 @@ class repeating_KFold():
 	def get_n_splits(self,X=None,y=None,groups=None):
 		return self.n_splits*self.repeat
 	
-def KFold_cv(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='auto',random_state=None):
+def KFold_cv(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='auto',pred_int=0,random_state=None):
 	"""
 	Perform k-fold cross-validation
 	
@@ -77,12 +77,15 @@ def KFold_cv(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='
 		sample_weight: weights for fitting data. If None, defaults to equal weights
 		n_splits: number of folds. Default 5
 		pipeline_learner_step: if estimator is a Pipeline instance, index of the learner step
+		pred_int: prediction interval to calculate (i.e., 0.5 indicates 50% interval). If 0, do not calculate prediction interval
 		random_state: random state for KFold shuffle
 	Returns:
 		 actual: acutal y values for test folds
 		 pred: predicted y values for test folds
 		 train_scores: list of training r2 scores
 		 test_scores: list of test r2 scores
+		 pred_lb: lower bound of prediction interval. Vector of zeros if pred_int==0
+		 pred_ub: upper bound of prediction interval. Vector of zeros if pred_int==0
 	"""
 	if random_state is not None:
 		kf = KFold(n_splits,shuffle=True,random_state=random_state)
@@ -99,6 +102,8 @@ def KFold_cv(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='
 	test_scores = np.empty(n_splits)
 	actual = np.zeros_like(y)
 	pred = np.zeros_like(y)
+	pred_lb = np.zeros_like(y)
+	pred_ub = np.zeros_like(y)
 	for i, (train_index,test_index) in enumerate(kf.split(X)):
 		if type(X)==pd.core.frame.DataFrame:
 			X_train, X_test = X.iloc[train_index,:], X.iloc[test_index,:]
@@ -132,12 +137,15 @@ def KFold_cv(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='
 			estimator.fit(X_train,y_train)
 			train_scores[i] = estimator.score(X_train,y_train)
 			test_scores[i] = estimator.score(X_test,y_test)
+			
 		actual[test_index] = y_test
 		pred[test_index] = estimator.predict(X_test)
+		if pred_int > 0:
+			pred_lb[test_index],pred_ub[test_index] = predict_interval(estimator,X_test,pred_int)
 	
-	return actual, pred, train_scores, test_scores
+	return actual, pred, train_scores, test_scores, pred_lb, pred_ub
 
-def repeated_KFold_cv(estimator,X,y,repeat,sample_weight=None,n_splits=5,pipeline_learner_step='auto',random_state=None):
+def repeated_KFold_cv(estimator,X,y,repeat,sample_weight=None,n_splits=5,pipeline_learner_step='auto',pred_int=0,random_state=None):
 	"""
 	Perform k-fold cross-validation with multiple random splits
 	
@@ -149,17 +157,22 @@ def repeated_KFold_cv(estimator,X,y,repeat,sample_weight=None,n_splits=5,pipelin
 		sample_weight: weights for fitting data. If None, defaults to equal weights
 		n_splits: number of folds. Default 5
 		pipeline_learner_step: if estimator is a Pipeline instance, index of the learner step
+		pred_int: prediction interval to calculate (i.e., 0.5 indicates 50% interval). If 0, do not calculate prediction interval
 		random_state: random state for KFold shuffle
 	Returns:
 		 actuals: list of actual y vectors for all CV repetitions
 		 preds: list of predicted y vectors for all CV repetitions
 		 agg_test_scores: list of r2 scores for all CV repetitions
 		 agg_test_maes: list of MAEs for all CV repetitions
+		 pred_lbs: list of prediction interval lower bounds for all CV repetitions. All zeros if pred_int==0
+		 pred_ubs: list of prediction interval upper bounds for all CV repetitions. All zeros if pred_int==0
 	"""
 	actuals = np.empty((repeat,len(y)))
 	preds = np.empty_like(actuals)
 	agg_test_scores = np.empty(repeat)
 	agg_test_maes = np.empty(repeat)
+	pred_lbs = np.empty_like(actuals)
+	pred_ubs = np.empty_like(actuals)
 	
 	# set seeds for consistency if specified
 	if random_state is not None:
@@ -169,17 +182,19 @@ def repeated_KFold_cv(estimator,X,y,repeat,sample_weight=None,n_splits=5,pipelin
 		seeds = [None]*repeat
 		
 	for n in range(repeat):
-		act,pred,train,test = KFold_cv(estimator,X,y,sample_weight,n_splits,pipeline_learner_step,random_state=seeds[n])
+		act,pred,train,test,lb,ub = KFold_cv(estimator,X,y,sample_weight,n_splits,pipeline_learner_step,pred_int,random_state=seeds[n])
 		agg_test_score = r2_score(act,pred,sample_weight=sample_weight)
 		agg_mae = mean_absolute_error(act,pred,sample_weight=sample_weight)
 		actuals[n] = act
 		preds[n] = pred
 		agg_test_scores[n] = agg_test_score
 		agg_test_maes[n] = agg_mae
+		pred_lbs[n] = lb
+		pred_ubs[n] = ub
 
-	return actuals, preds, agg_test_scores, agg_test_maes
+	return actuals, preds, agg_test_scores, agg_test_maes, pred_lbs, pred_ubs
 	
-def KFold_pva(estimator,X,y,sample_weight=None,n_splits=5,random_state=None,ax=None,show_metrics=['r2','mae'],text_kw={},logscale=False,s=10,line_kw={'c':'g'},**scatter_kw):
+def KFold_pva(estimator,X,y,sample_weight=None,n_splits=5,pipeline_learner_step='auto',random_state=None,ax=None,xerr=None,pred_int=0,show_metrics=['r2','mae'],text_kw={},s=10,line_kw={'zorder':0,'c':'#1f77b4'},**scatter_kw):
 	"""
 	Perform k-fold cross-validation and plot predicted vs. actual for test set
 	
@@ -193,7 +208,6 @@ def KFold_pva(estimator,X,y,sample_weight=None,n_splits=5,random_state=None,ax=N
 		ax: axis on which to plot
 		show_metrics: list of metrics to calculate and annotate on plot. Options: 'r2', 'mae'
 		text_kw: kwargs for metric text; passed to plt.text()
-		logscale: if True, plot as log-log 
 		s: marker size
 		line_kw: kwargs for ideal x=y line
 		scatter_kw: kwargs to pass to plt.scatter()
@@ -203,15 +217,20 @@ def KFold_pva(estimator,X,y,sample_weight=None,n_splits=5,random_state=None,ax=N
 		test_scores: k-array of test scores
 		agg_test_score: overall test score (r2) considering all test folds together 
 	"""
-	y, y_pred, train_scores, test_scores = KFold_cv(estimator,X,y,n_splits=n_splits,random_state=random_state)
+	y, y_pred, train_scores, test_scores, pred_lb, pred_ub = KFold_cv(estimator,X,y,sample_weight,n_splits,pipeline_learner_step,pred_int,random_state)
 	agg_test_score = r2_score(y,y_pred,sample_weight=sample_weight)
 	
-	ax = pred_v_act_plot(y,y_pred,sample_weight,ax,show_metrics,text_kw,logscale,s,line_kw,**scatter_kw)
+	if pred_int > 0:
+		yerr = np.array([y_pred-pred_lb,pred_ub-y_pred])
+	else:
+		yerr = None
+		
+	ax = pred_v_act_plot(y,y_pred,sample_weight,ax,xerr,yerr,show_metrics,text_kw,s,line_kw,**scatter_kw)
 	
 	return train_scores, test_scores, agg_test_score
 	
 def repeated_KFold_pva(estimator,X,y,repeat,plot_type='series',sample_weight=None,n_splits=5,pipeline_learner_step=1,random_state=None,
-					ax=None,show_metrics=['r2','mae'],text_kw={},logscale=False,s=10,line_kw={'c':'g'},**scatter_kw):
+					ax=None,xerr=None,pred_int=0,show_metrics=['r2','mae'],text_kw={},s=10,line_kw={'zorder':0,'c':'#1f77b4'},**scatter_kw):
 	"""
 	Perform k-fold cross-validation and plot predicted vs. actual for test set
 	
@@ -227,7 +246,6 @@ def repeated_KFold_pva(estimator,X,y,repeat,plot_type='series',sample_weight=Non
 		ax: axis on which to plot
 		show_metrics: list of metrics to calculate and annotate on plot. Options: 'r2', 'mae'
 		text_kw: kwargs for metric text; passed to plt.text()
-		logscale: if True, plot as log-log 
 		s: marker size
 		scatter_kw: kwargs to pass to plt.scatter()
 		
@@ -236,17 +254,30 @@ def repeated_KFold_pva(estimator,X,y,repeat,plot_type='series',sample_weight=Non
 		test_scores: k-array of test scores
 		tot_test_score: overall test score (r2) considering all test folds together 
 	"""
-	actuals, preds, agg_test_scores, agg_test_maes = repeated_KFold_cv(estimator,X,y,repeat,sample_weight,n_splits,pipeline_learner_step,random_state)
+	actuals, preds, agg_test_scores, agg_test_maes, pred_lbs, pred_ubs = repeated_KFold_cv(estimator,X,y,repeat,sample_weight,n_splits,pipeline_learner_step,pred_int,random_state)
 	
 	if plot_type=='series':
 		# plot each repetition as a separate series
-		for y, y_pred in zip(actuals, preds):
-			ax = pred_v_act_plot(y,y_pred,sample_weight,ax,show_metrics=None,text_kw=text_kw,logscale=logscale,s=s,line_kw=line_kw,**scatter_kw)
+		for y,y_pred,lb,ub in zip(actuals, preds,pred_lbs,pred_ubs):
+			if pred_int > 0:
+				yerr = np.array([y_pred-lb,ub-y_pred])
+			else:
+				y_err = None
+			ax = pred_v_act_plot(y,y_pred,sample_weight,ax,xerr,yerr,show_metrics=None,text_kw=text_kw,s=s,line_kw=line_kw,**scatter_kw)
+			
 	elif plot_type=='mean':
 		# average predicted values for each point across repetitions
 		y = np.mean(actuals,axis=0)
 		y_pred = np.mean(preds,axis=0)
-		ax = pred_v_act_plot(y,y_pred,sample_weight,ax,show_metrics=None,text_kw=text_kw,logscale=logscale,s=s,line_kw=line_kw,**scatter_kw)
+		if pred_int > 0:
+			pred_std = np.std(preds,axis=0)
+			lerr = np.mean(preds-pred_lbs,axis=0)
+			uerr = np.mean(pred_ubs-preds,axis=0)
+			# add the variance between CV repetitions to the prediction interval
+			yerr = np.array([(pred_std**2 + lerr**2)**0.5,(pred_std**2 + uerr**2)**0.5])
+		else:
+			yerr = None
+		ax = pred_v_act_plot(y,y_pred,sample_weight,ax,xerr,yerr,show_metrics=None,text_kw=text_kw,s=s,line_kw=line_kw,**scatter_kw)
 
 	# metrics need to be aggregated across repetitions
 	metric_txt = ''
@@ -266,7 +297,9 @@ def repeated_KFold_pva(estimator,X,y,repeat,plot_type='series',sample_weight=Non
 		y = text_kw.pop('y',0.95)
 		ax.text(x,y,metric_txt,transform=ax.transAxes,va='top',**text_kw)
 
-def plot_pva(estimator,X,y,sample_weight=None,ax=None,show_metrics=['r2','mae'],text_kw={},logscale=False,s=10,line_kw={'c':'g'},**scatter_kw):
+	return actuals, preds, agg_test_scores, agg_test_maes, pred_lbs, pred_ubs
+	
+def plot_pva(estimator,X,y,sample_weight=None,ax=None,xerr=None,pred_int=0,show_metrics=['r2','mae'],text_kw={},s=10,line_kw={'zorder':0,'c':'#1f77b4'},**scatter_kw):
 	"""
 	Plot predicted vs. actual for fitted estimator
 
@@ -276,15 +309,22 @@ def plot_pva(estimator,X,y,sample_weight=None,ax=None,show_metrics=['r2','mae'],
 		y: response (n-vector)
 		sample_weight: sample weights. Only used to calculate metrics (r2, mae)
 		ax: axis on which to plot
+		xerr: scalar or array of x (actual) errors/uncertainties
+		pred_int: if True, estimate and plot prediction intervals
 		show_metrics: list of metrics to calculate and annotate on plot. Options: 'r2', 'mae'
 		text_kw: kwargs for metric text; passed to plt.text()
-		logscale: if True, plot as log-log 
 		s: marker size
 	"""
 	y_pred = estimator.predict(X)
-	ax = pred_v_act_plot(y,y_pred,sample_weight,ax,show_metrics,text_kw,logscale,s,line_kw,**scatter_kw)
+	if pred_int > 0:
+		lb,ub = predict_interval(estimator,X,pred_int)
+		yerr = np.array([y_pred-lb,ub-y_pred])
+	else:
+		yerr = None
+		
+	ax = pred_v_act_plot(y,y_pred,sample_weight,ax,xerr,yerr,show_metrics,text_kw,s,line_kw,**scatter_kw)
 	
-def pred_v_act_plot(y,y_pred,sample_weight=None,ax=None,show_metrics=['r2','mae'],text_kw={},logscale=False,s=10,line_kw={'c':'g'},legend=True,**scatter_kw):
+def pred_v_act_plot(y,y_pred,sample_weight=None,ax=None,xerr=None,yerr=None,show_metrics=['r2','mae'],text_kw={},s=10,line_kw={'zorder':0,'c':'#1f77b4'},legend=True,**scatter_kw):
 	"""
 	Plot predicted vs. actual
 
@@ -293,22 +333,22 @@ def pred_v_act_plot(y,y_pred,sample_weight=None,ax=None,show_metrics=['r2','mae'
 		y_pred: predictions
 		sample_weight: sample weights. Only used to calculate metrics (r2, mae)
 		ax: axis on which to plot
+		xerr: scalar or array of x (actual) errors/uncertainties
+		yerr: scalar or array of y (prediction) uncertainties
 		show_metrics: list of metrics to calculate and annotate on plot. Options: 'r2', 'mae'
 		text_kw: kwargs for metric text; passed to plt.text()
-		logscale: if True, plot as log-log 
 		s: marker size
 	"""
 	if ax is None:
 		fig, ax = plt.subplots()
 	
+	if xerr is None and yerr is None:
+		ax.scatter(y,y_pred,s=s,**scatter_kw)
+	else:
+		ax.errorbar(y,y_pred,xerr=xerr,yerr=yerr,ms=s,**scatter_kw)
 	axmin = multi_min([y,y_pred])
 	axmax = multi_max([y,y_pred])
-	if logscale==False:
-		ax.scatter(y,y_pred,s=s,**scatter_kw)
-		ax.plot([axmin,axmax],[axmin,axmax],**line_kw,label='Ideal')
-	elif logscale==True:
-		ax.loglog(y,y_pred,'o',markersize=s,**scatter_kw)
-		ax.loglog([axmin,axmax],[axmin,axmax],**line_kw,label='Ideal')
+	ax.plot([axmin,axmax],[axmin,axmax],**line_kw,label='Ideal')
 		
 	metric_txt = ''
 	if show_metrics is not None:
@@ -337,6 +377,22 @@ def pred_v_act_plot(y,y_pred,sample_weight=None,ax=None,show_metrics=['r2','mae'
 	
 	return ax
 	
+def predict_interval(model, X, percent=0.682):
+	if type(X)==pd.core.frame.DataFrame:
+		X = X.values
+	
+	y_pred = np.array([tree.predict(X) for tree in model.estimators_])
+	lper = 100*(0.5 - percent/2)
+	uper = 100*(0.5 + percent/2)
+	lb = np.percentile(y_pred,lper,axis=0)
+	ub = np.percentile(y_pred,uper,axis=0)
+	# y_pred = model.predict(X)
+	# lb = y_pred - 10
+	# ub = y_pred + 10
+	return lb,ub
+			
+		
+	
 	
 class GridSearchRepeatedCV():
 	def __init__(self,estimator,param_grid):
@@ -356,7 +412,7 @@ class GridSearchRepeatedCV():
 				params[param_name] = param_array[idx]
 			self.estimator.set_params(**params)
 			# perform cv
-			y_act, y_pred, agg_scores, agg_maes = repeated_KFold_cv(self.estimator,X,y,repeat,sample_weight,n_splits,pipeline_learner_step,random_state)
+			y_act, y_pred, agg_scores, agg_maes,lbs,ubs = repeated_KFold_cv(self.estimator,X,y,repeat,sample_weight,n_splits,pipeline_learner_step,pred_int=0,random_state=random_state)
 			self.grid_scores_[idx] = np.mean(agg_scores)
 			self.grid_params_[idx] = params
 			
@@ -431,7 +487,7 @@ class GridSearchRepeatedCV():
 			if mark_best:
 				# outline the best point in red
 				best_idx = np.argmax(scores)
-				ax.scatter(param_arrays[0][best_idx],param_arrays[1][best_idx],facecolors='none',edgecolors='r',**scatter_kw)
+				ax.scatter(param_arrays[0][best_idx],param_arrays[1][best_idx],facecolors='none',edgecolors='k',**scatter_kw)
 		elif len(plot_params)==3:
 			p = ax.scatter(param_arrays[0],param_arrays[1],param_arrays[2],c=scores,**scatter_kw)
 			ax.set_xlabel(plot_params[0])
@@ -441,6 +497,6 @@ class GridSearchRepeatedCV():
 				fig.colorbar(p,ax=ax,label='CV Score')
 			if mark_best:
 				best_idx = np.argmax(scores)
-				ax.scatter(param_arrays[0][best_idx],param_arrays[1][best_idx],param_arrays[2][best_idx],facecolors='none',edgecolors='r',**scatter_kw)
+				ax.scatter(param_arrays[0][best_idx],param_arrays[1][best_idx],param_arrays[2][best_idx],facecolors='none',edgecolors='k',**scatter_kw)
 			
 		return ax

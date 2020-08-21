@@ -7,16 +7,17 @@ from matminer.featurizers.base import BaseFeaturizer
 from matminer.featurizers.composition import ValenceOrbital, CohesiveEnergy, ElementProperty, BandCenter, MolecularOrbitals
 from matminer.utils.data import MagpieData
 import pandas as pd
+import warnings
 
 from bca_plotting import get_coords_from_comp
 
 """Lookups for Ba, Ca, and Al"""
-oxides = {'Ba':'BaO','Ca':'CaO','Al':'Al2O3'}
-nitrides = {'Ba':'Ba3N2','Ca':'Ca3N2','Al':'AlN'}
-hydrides = {'Ba':'BaH2','Ca':'CaH2','Al':'AlH3'}
+oxides = {'Ba':'BaO','Ca':'CaO','Al':'Al2O3','B':'B2O3','Mg':'MgO','Sr':'SrO'}
+nitrides = {'Ba':'Ba3N2','Ca':'Ca3N2','Al':'AlN','B':'BN','Mg':'Mg3N2','Sr':'Sr3N2'}
+hydrides = {'Ba':'BaH2','Ca':'CaH2','Al':'AlH3','B':'BH3','Mg':'MgH2','Sr':'SrH2'}
 # Elemental work function (eV) - from https://public.wsu.edu/~pchemlab/documents/Work-functionvalues.pdf
-# Al value is average of 100,110,111 planes; Ba and Ca values are for polycrystalline
-work_function = {'Ba':2.52,'Ca':2.87,'Al':4.17}
+# Al value is average of 100,110,111 planes; Ba, Ca, B, Mg, and Sr values are for polycrystalline
+work_function = {'Ba':2.52,'Ca':2.87,'Al':4.17,'B':4.45,'Mg':3.66,'Sr':2.59}
 
 """Load elemental electrical conductivity data"""
 elec_conductivity_df = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'ElementalElectricalConductivity.txt'),sep='\t',skipfooter=1,engine='python')
@@ -28,7 +29,7 @@ class MatProjCalc:
 		self.calc_MX_bond_energy = {} 
 		#dict to store formation enthalpies after looking up
 		self.fH_dict = {
-				('Ce','gas','exp'):(417.1,'Formation enthalpy for Ce in gas phase includes exp data from phases: gas') #correction to MP entry: fH for Ce gas is negative in MP
+				('Ce','gas','exp',''):(417.1,'Formation enthalpy for Ce in gas phase includes exp data from phases: gas') #correction to MP entry: fH for Ce gas is negative in MP
 					}
 		self.mp = MPRester(os.environ['MATPROJ_API_KEY'])
 		print("Created MatProjCalc instance")
@@ -77,7 +78,7 @@ class MatProjCalc:
 		
 		return [f'{metal}{m}{anion}{n}' for m,n in self.mn_combos if m/n <= -anion_ox_state and metal_ox_lim[0] <= -anion_ox_state*n/m <= metal_ox_lim[1]]
 		
-	def get_fH(self,formula, phase='solid', data_type='exp',silent=True):
+	def get_fH(self,formula, phase='solid', data_type='exp',silent=True,exclude_phases=[]):
 		"""
 		Get average experimental formation enthalpy for formula and phase
 		
@@ -88,7 +89,7 @@ class MatProjCalc:
 		"""
 		#first check for corrected/saved data in fH_dict
 		try:
-			fH,msg = self.fH_dict[(formula,phase,data_type)]
+			fH,msg = self.fH_dict[(formula,phase,data_type,','.join(exclude_phases))]
 			if silent==False:
 				#print('already calculated')
 				print(msg)
@@ -98,7 +99,7 @@ class MatProjCalc:
 			if data_type=='exp':
 				#results = self.mp.get_exp_thermo_data(formula)
 				if phase=='solid':
-					phase_results = [r for r in results if r.type=='fH' and r.phaseinfo not in ('liquid','gas')]
+					phase_results = [r for r in results if r.type=='fH' and r.phaseinfo not in ['liquid','gas']+exclude_phases]
 				else:
 					phase_results = [r for r in results if r.type=='fH' and r.phaseinfo==phase]
 				phases = np.unique([r.phaseinfo for r in phase_results])
@@ -130,7 +131,7 @@ class MatProjCalc:
 				print(msg)
 			
 			#store value and info message for future lookup
-			self.fH_dict[(formula,phase,data_type)] = (fH,msg)
+			self.fH_dict[(formula,phase,data_type,','.join(exclude_phases))] = (fH,msg)
 			
 		return fH
 
@@ -202,7 +203,7 @@ class MatProjCalc:
 		
 		return {metal:metal_ox_state,anion:anion_ox_state}
 
-	def MX_bond_energy(self,formula,data_type='exp',ordered_formula=False,silent=True):
+	def MX_bond_energy(self,formula,data_type='exp',ordered_formula=False,silent=True,exclude_phases=[]):
 		"""
 		Get metal-anion bond energy per mole of metal for binary ionic compound
 		
@@ -210,13 +211,14 @@ class MatProjCalc:
 		-----------
 		formula: chemical formula string
 		ordered_formula: if true, assume that first element in formula is metal, and second is anion (i.e. MmXn)
+		exclude_phases: phases to exclude from aggregate over all solid phases
 		"""
 		
 		comp = mg.Composition(formula)
 		formula = comp.reduced_formula
 		try:
 			#look up compound if already calculated
-			abe,msg = self.calc_MX_bond_energy[(formula,data_type)]
+			abe,msg = self.calc_MX_bond_energy[(formula,data_type,','.join(exclude_phases))]
 			if silent==False:
 				#print('already calculated')
 				print(msg)
@@ -240,14 +242,14 @@ class MatProjCalc:
 			m = comp.get_el_amt_dict()[metal]
 			n = comp.get_el_amt_dict()[anion]
 				
-			fH = self.get_fH(formula,data_type=data_type,silent=silent) #oxide formation enthalpy
-			H_sub = self.get_fH(metal, phase='gas',silent=silent) #metal sublimation enthalpy - must be exp data (no vasp data for gas)
+			fH = self.get_fH(formula,data_type=data_type,silent=silent,exclude_phases=exclude_phases) #oxide formation enthalpy
+			H_sub = self.get_fH(metal, phase='gas',silent=silent,exclude_phases=[]) #metal sublimation enthalpy - must be exp data (no vasp data for gas)
 			#look up info messages from get_fH to store in dict
-			msg = self.fH_dict[formula,'solid',data_type][1] + '\n'
-			msg += self.fH_dict[metal,'gas','exp'][1]
+			msg = self.fH_dict[formula,'solid',data_type,','.join(exclude_phases)][1] + '\n'
+			msg += self.fH_dict[metal,'gas','exp',''][1]
 			DX2 = self.dissocation_energy[anion] #anion dissociation energy
 			abe = (fH - m*H_sub - (n/2)*DX2)/m #M-O bond energy per mole of M
-			self.calc_MX_bond_energy[(formula,data_type)] = (abe,msg)
+			self.calc_MX_bond_energy[(formula,data_type,','.join(exclude_phases))] = (abe,msg)
 		return abe
 		
 	def citations(self):
@@ -295,22 +297,39 @@ class MatProjCalc:
 #create MatProjCalc instance to store fetched data/calculations
 mpcalc = MatProjCalc()
 
-mpcalc = MatProjCalc()
 # oxide formation enthalpies
-oxide_Hf = {M:mpcalc.get_fH(MO) for M,MO in oxides.items()}
+oxide_Hf = {M:mpcalc.get_fH(MO,exclude_phases=['amorph']) for M,MO in oxides.items()}
 #bond energies per mole of metal M
-MO_bond_energy = {M:mpcalc.MX_bond_energy(MO) for M,MO in oxides.items()}
-MN_bond_energy = {M:mpcalc.MX_bond_energy(MN) for M,MN in nitrides.items()}
-MH_bond_energy = {M:mpcalc.MX_bond_energy(MH,ordered_formula=True) for M,MH in hydrides.items()}
+MO_bond_energy = {M:mpcalc.MX_bond_energy(MO,exclude_phases=['amorph']) for M,MO in oxides.items()}
+# MN_bond_energy = {M:mpcalc.MX_bond_energy(MN,exclude_phases=['amorph']) for M,MN in nitrides.items()}
+# MH_bond_energy = {M:mpcalc.MX_bond_energy(MH,ordered_formula=True,exclude_phases=['amorph']) for M,MH in hydrides.items()}
+MN_bond_energy = {}
+MH_bond_energy = {}
+for M in oxides.keys():	
+	# Use experimental data where possible, fill in with VASP data if needed
+	MN = nitrides[M]
+	try:
+		MN_bond_energy[M] = mpcalc.MX_bond_energy(MN,exclude_phases=['amorph'])
+	except LookupError:
+		MN_bond_energy[M] = mpcalc.MX_bond_energy(MN,exclude_phases=['amorph'],data_type='vasp')
+		warnings.warn(f'Using VASP data for formation enthalpy of {MN}')
+		
+	MH = hydrides[M]
+	try:
+		MH_bond_energy[M] = mpcalc.MX_bond_energy(MH,ordered_formula=True,exclude_phases=['amorph'])
+	except LookupError:
+		MH_bond_energy[M] = mpcalc.MX_bond_energy(MH,ordered_formula=True,exclude_phases=['amorph'],data_type='vasp')
+		warnings.warn(f'Using VASP data for formation enthalpy of {MH}')
+		
 #bond energy delta per mole of M
 ON_BondEnergyDelta = {M:MN_bond_energy[M] - MOBE  for M, MOBE in MO_bond_energy.items()}
 OH_BondEnergyDelta = {M:MH_bond_energy[M] - MOBE  for M, MOBE in MO_bond_energy.items()}
 NH_BondEnergyDelta = {M:MH_bond_energy[M] - MNBE  for M, MNBE in MN_bond_energy.items()}
 
-oxidation_state = {'Ba':2,'Ca':2,'Al':3}
+oxidation_state = {'Ba':2,'Ca':2,'Al':3,'B':3,'Mg':2,'Sr':2}
 
 metal_lookups = {}
-for m in ['Ba','Ca','Al']:
+for m in ['Ba','Ca','Al','B','Mg','Sr']:
 	metal_lookups[m] = {'work_function':work_function[m],
 						'MO_BondEnergy':MO_bond_energy[m],
 						'MN_BondEnergy':MN_bond_energy[m],
@@ -476,8 +495,8 @@ class BCA():
 		#checks
 		if len(self.cations)==0:
 			raise Exception('No cations in composition')
-		if self.composition['O']!=self.composition['Ba'] + self.composition['Ca'] + self.composition['Al']*3/2:
-			raise Exception('Oxygen amount does not match BaO, CaO, Al2O3 stoichiometry')
+		# if self.composition['O']!=self.composition['Ba'] + self.composition['Ca'] + self.composition['Al']*3/2:
+			# raise Exception('Oxygen amount does not match BaO, CaO, Al2O3 stoichiometry')
 		if self.radius_type not in ('crystal_radius','ionic_radius'):
 			raise Exception(f'Invalid radius type {self.radius_type}. Options are crystal_radius and ionic_radius')
 	

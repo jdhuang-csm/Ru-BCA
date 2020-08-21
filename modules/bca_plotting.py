@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pymatgen as mg
 import pandas as pd
 from file_load import BCA_formula_from_str
+from model_eval import predict_interval
 
 def get_coords_from_comp(comp,tern_axes=['Ca','Al','Ba']):
 	base_amt = {'Ba':1,'Ca':1,'Al':2}
@@ -20,7 +21,7 @@ def get_comp_from_coords(coords,tern_axes=['Ca','Al','Ba'],scale=1):
 	# else:
 		# a,b,c = coords
 		
-	oxides = {'Ba':'BaO','Ca':'CaO','Al':'Al2O3'}
+	oxides = {'Ba':'BaO','Ca':'CaO','Al':'Al2O3','B':'B2O3','Mg':'MgO','Sr':'SrO'}
 	formula = ''.join(['({}){}'.format(oxides[m],amt) for m,amt in zip(tern_axes,coords)])
 	return mg.Composition(formula)
 	
@@ -86,8 +87,11 @@ def plot_labeled_ternary(comps,values,ax=None,label_points=True,add_labeloffset=
 
 	if label_points==True:
 		for p,val in zip(points,values):
-			#disp = disp_func(file)
-			tax.annotate('{}'.format(int(round(val,0))),p+point_labeloffset,size=point_labelsize,ha='center',va='bottom')
+			if pd.isnull(val):
+				disp = 'NA'
+			else:
+				disp = '{}'.format(int(round(val,0)))
+			tax.annotate(disp,p+point_labeloffset,size=point_labelsize,ha='center',va='bottom')
 
 	#add_colorbar(fig,label='NH3 Production Rate (mmol/g$\cdot$h)',vmin=min(values),vmax=max(values),cbrect=[0.9,0.2,0.03,0.67])
 	tax._redraw_labels()
@@ -124,7 +128,7 @@ def featurize_simplex(scale, featurizer, feature_cols=None, scaler=None,tern_axe
 		
 	return coords, X
 
-def predict_simplex(estimator, scale, featurizer=None, feature_cols=None, scaler=None,use_X=None,tern_axes=['Ca','Al','Ba']):
+def predict_simplex(estimator, scale, featurizer=None, feature_cols=None, scaler=None,use_X=None,tern_axes=['Ca','Al','Ba'],metric='median'):
 	"""
 	Generate predictions for simplex (intended for making heatmaps)
 	
@@ -137,6 +141,7 @@ def predict_simplex(estimator, scale, featurizer=None, feature_cols=None, scaler
 		use_X: optional arg to provide feature matrix if already calculated. 
 			If provided, featurizer, feature_cols, and scaler will be ignored
 		tern_axes: ternary axes. Default ['Ca','Al','Ba']
+		metric: if 'median', return point estimate. If 'iqr', return IQR of prediction
 	Returns:
 		coords: list of simplex coordinates
 		y: estimator predictions
@@ -158,21 +163,35 @@ def predict_simplex(estimator, scale, featurizer=None, feature_cols=None, scaler
 	# set all features in bad rows to zero so that they don't break estimator.predict()
 	X[bad_val_idx] = 0
 	
-	y = estimator.predict(X)
+	if metric=='median':
+		y = estimator.predict(X)
+	elif metric=='iqr':
+		lb,ub = predict_interval(estimator,X,0.682)
+		y = ub - lb
 	# set predictions for bad feature values to nan
 	y[bad_val_idx] = np.nan
 	
 	return coords, y
 	
 def estimator_ternary_heatmap(scale, estimator, featurizer=None, feature_cols=None, scaler=None,use_X=None, style='triangular', 
-					   labelsize=11, add_labeloffset=0, cmap=None, ax=None,figsize=None, vlim=None,
+					   labelsize=11, add_labeloffset=0, cmap=None, ax=None,figsize=None, vlim=None,metric='median',
 					   multiple=0.1, tick_kwargs={'tick_formats':'%.1f','offset':0.02},
 					   tern_axes=['Ca','Al','Ba'],tern_labels = ['CaO','Al$_2$O$_3$','BaO']):
 	"""
+	Generate ternary heatmap of ML predictions
 	
-	
+	Args:
+		scale: simplex scale
+		estimator: sklearn estimator instance
+		featurizer: featurizer instance
+		feature_cols: subset of feature names used in model_eval
+		scaler: sklearn scaler instance
+		use_X: pre-calculated feature matrix; if passed, featurizer, feature_cols, and scaler are ignored
+		style: heatmap interpolation style
+		tern_axes: ternary axes. Only used for generating simplex compositions; ignored if use_X is supplied. Defaults to ['Ca','Al','Ba']
+		metric: if 'median', return point estimate. If 'iqr', return IQR of prediction
 	""" 
-	coords, y = predict_simplex(estimator, scale, featurizer, feature_cols, scaler,use_X,tern_axes)
+	coords, y = predict_simplex(estimator, scale, featurizer, feature_cols, scaler,use_X,tern_axes,metric)
 	
 	if vlim is None:
 		vmin = min(y)
@@ -260,7 +279,7 @@ def ternary_scatter_vs_heatmap(scatter_comps,scatter_values, hmap_scale,hmap_est
 
 	return tax1,tax2	
 	
-def scatter_over_heatmap(scatter_comps, scatter_values,hmap_scale,hmap_estimator,vlim, ax=None, cmap=None,
+def scatter_over_heatmap(scatter_comps, scatter_values,hmap_scale,hmap_estimator,vlim, ax=None, cmap=None,metric='median',
 						hmap_featurizer=None,hmap_feature_cols=None,hmap_scaler=None,hmap_use_X=None,point_labeloffset=[0,0.02,0],
 						corner_labelsize=11,add_labeloffset=0,marker='o',markersize=12,scatter_labels=None,scatter_labelsize=12):
 	"""
@@ -270,7 +289,7 @@ def scatter_over_heatmap(scatter_comps, scatter_values,hmap_scale,hmap_estimator
 		fig, ax = plt.subplots(figsize=(8,8))
 
 	tax = estimator_ternary_heatmap(hmap_scale,hmap_estimator,hmap_featurizer,hmap_feature_cols,scaler=hmap_scaler,use_X=hmap_use_X,
-									 ax=ax,labelsize=corner_labelsize,add_labeloffset=add_labeloffset,vlim=vlim,cmap=cmap)
+									 ax=ax,labelsize=corner_labelsize,add_labeloffset=add_labeloffset,vlim=vlim,metric=metric,cmap=cmap)
 								 
 	if scatter_labels is None:
 		# write blank labels

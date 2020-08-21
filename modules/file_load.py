@@ -17,6 +17,12 @@ def load_data(file):
 	#trim column names
 	df.columns = [c.strip() for c in df.columns]
 	df['tot-flow'] = df['H2-flow'] + df['N2-flow']
+	# equilibrium conversion rate at T
+	df['eq_ppm'] = df['Outer-Temp'].map(get_eq_conv)
+	# fraction of equilibrium conversion achieved
+	df['rel_conv'] = df['NH3_ppm']/df['eq_ppm']
+	# relative rate: prod_rate/eq_ppm is proportional to (NH3_ppm/eq_ppm)*tot-flow
+	df['rel_rate'] = df['NH3_Prod_rate']/df['eq_ppm']
 	return df
 
 def load_metadata(file):
@@ -75,8 +81,28 @@ def load_dir(datadir, aggregate_cols=['NH3_Prod_rate','NH3_ppm'],aggregate_kwarg
 	# aggregate specified columns
 	for agg_col,agg_kw in zip(aggregate_cols,aggregate_kwargs):
 		file_paths = [os.path.join(datadir,file) for file in files]
-		vals = aggregate_windowed_median(file_paths,agg_col,**agg_kw)
-		data['{}_{}'.format(agg_kw.get('aggregate'),agg_col)] = vals
+		if agg_col=='NH3_Prod_rate' and agg_kw['aggregate']=='max':
+			vals = np.zeros(len(file_paths))
+			temps = vals.copy()
+			HN_ratio = vals.copy()
+			flows = vals.copy()
+			for j,file in enumerate(file_paths):
+				df = load_data(file)
+				wdf = windowed_median(df,agg_col,agg_kw['window'])
+				vals[j] = wdf[agg_col].max()
+				# get T corresponding to max prod rate
+				temps[j] = wdf.loc[wdf[agg_col].idxmax(),'Outer-Temp']
+				# get H2:N2 ratio at max prod rate
+				HN_ratio[j] = wdf.loc[wdf[agg_col].idxmax(),'H2-flow']/wdf.loc[wdf[agg_col].idxmax(),'N2-flow']
+				# get total flow at max prod rate
+				flows[j] = wdf.loc[wdf[agg_col].idxmax(),'tot-flow']
+			data['{}_{}'.format(agg_kw.get('aggregate'),agg_col)] = vals
+			data['T_max'] = temps
+			data['HN_ratio_max'] = HN_ratio
+			data['flow_max'] = flows
+		else:
+			vals = aggregate_windowed_median(file_paths,agg_col,**agg_kw)
+			data['{}_{}'.format(agg_kw.get('aggregate'),agg_col)] = vals
 		
 	return data
 	
@@ -159,6 +185,29 @@ def disp_func(file):
 	if end > 0:
 		disp = disp[:end]
 	return disp	
+	
+# ----------------
+# Equilibrium calc
+# ----------------
+T_conv = np.concatenate(([300],np.arange(400,601,50))) # T in C
+K_eq = np.array([4.34e-3,1.64e-4,4.51e-5,1.45e-5,5.38e-6,2.25e-6]) # equil. constants for N2 + 3H2 --> 2NH3
+p_h2 = 7.5 # init. H2 pressure (10 bar total)
+p_n2 = 2.5 # init. N2 pressure
+
+# solve for equilibrium P_NH3
+C0 = K_eq*p_h2**3*p_n2
+C1 = -K_eq*(p_h2**3 + 9*p_h2**2*p_n2)
+C2 = K_eq*(9*p_h2**2 + 27*p_h2*p_n2) - 4
+C3 = -K_eq*(27*p_h2 + 27*p_n2)
+C4 = 27*K_eq
+
+coefs = [[c4,c3,c2,c1,c0] for c4,c3,c2,c1,c0 in zip(C4,C3,C2,C1,C0)]
+delta_p = np.array([np.roots(c)[3].real for c in coefs])
+p_nh3 = 2*delta_p # eq. NH3 pressure
+eq_conv = 1e6*p_nh3/(p_h2+p_n2-2*delta_p) # eq. conversion in ppm
+
+def get_eq_conv(T):
+	return np.interp(T,T_conv,eq_conv)
 
 # ---------------
 # Data processing

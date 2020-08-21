@@ -14,7 +14,7 @@ This repository contains data, code, and analysis for a study of Ru/(BaO)-(CaO)-
 * The volcano relationship suggests that BCA supports with optimal (metal-oxygen)-(metal-nitrogen) bond energy deltas are able to boost synthesis rates by adsorbing nitrogen directly, removing the nitrogen adsorption bottleneck observed for typical ammonia synthesis catalysts.
 * The microkinetic model for Ru/B2CA revealed that (1) nitrogen adsorption is not the rate-limiting step in ammonia synthesis over Ru/B2CA and (2) the Ru surface is rich with adsorbed nitrogen, lending support to the mechanistic hypothesis derived from the ML model.
 
-![AdsMech](/images/SynthesisCartoon_annote.pdf)*Proposed mechanism for ammonia formation on Ru/B2CA.*
+![AdsMech](/images/SynthesisCartoon_annote.PNG)*Proposed mechanism for ammonia formation on Ru/B2CA.*
 
 ## Repository Resources
 The following resources are available in this repository:
